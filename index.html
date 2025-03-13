@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroNote - Research Management Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #10b981;
+            --accent: #8b5cf6;
+            --dark: #1e3a8a;
+            --light: #f3f4f6;
+            --shadow-offset: 4px;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f9ff;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 20%);
+        }
+        
+        .neubrutalism {
+            border: 3px solid black;
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0 0 #000;
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .neubrutalism:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 0 #000;
+        }
+        
+        .neubrutalism-sm {
+            border: 2px solid black;
+            box-shadow: 3px 3px 0 0 #000;
+        }
+        
+        .neubrutalism-sm:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0 0 #000;
+        }
+        
+        .color-block-1 {
+            background-color: #3b82f6;
+        }
+        
+        .color-block-2 {
+            background-color: #10b981;
+        }
+        
+        .color-block-3 {
+            background-color: #8b5cf6;
+        }
+        
+        .color-block-4 {
+            background-color: #ef4444;
+        }
+        
+        .text-mono {
+            font-family: 'Space Mono', monospace;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .kanban-column {
+            min-height: 400px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 5px;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-white neubrutalism p-4 m-4 mb-2">
+            <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <div class="text-2xl font-bold text-mono">
+                        <span class="bg-blue-500 px-3 py-1 neubrutalism-sm">Astro</span>
+                        <span class="bg-purple-500 px-3 py-1 neubrutalism-sm">Note</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                    <button id="toggle-view-btn" class="bg-yellow-300 px-4 py-2 neubrutalism-sm">
+                        <i class="bi bi-grid-3x3-gap-fill mr-1"></i> Toggle View
+                    </button>
+                    <button id="new-research-btn" class="bg-green-400 px-4 py-2 neubrutalism-sm">
+                        <i class="bi bi-plus-lg mr-1"></i> New Research
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto p-4 flex-grow">
+            <!-- Tabs for different views -->
+            <div class="mb-8 flex space-x-2">
+                <button class="view-tab active bg-blue-400 px-6 py-2 neubrutalism-sm" data-view="kanban">
+                    <i class="bi bi-kanban mr-1"></i> Kanban
+                </button>
+                <button class="view-tab bg-purple-300 px-6 py-2 neubrutalism-sm" data-view="list">
+                    <i class="bi bi-list-ul mr-1"></i> List
+                </button>
+                <button class="view-tab bg-green-300 px-6 py-2 neubrutalism-sm" data-view="calendar">
+                    <i class="bi bi-calendar-week mr-1"></i> Calendar
+                </button>
+                <button class="view-tab bg-yellow-300 px-6 py-2 neubrutalism-sm" data-view="statistics">
+                    <i class="bi bi-bar-chart-fill mr-1"></i> Statistics
+                </button>
+            </div>
+
+            <!-- Search and filter -->
+            <div class="mb-6 bg-white p-4 neubrutalism">
+                <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                    <div class="flex-grow">
+                        <div class="relative">
+                            <input type="text" id="search-input" placeholder="Search your research..." 
+                                class="w-full p-3 border-2 border-black">
+                            <button class="absolute right-0 top-0 h-full px-4 bg-gray-200 border-2 border-black">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <select id="filter-category" class="p-3 border-2 border-black neubrutalism-sm bg-blue-100">
+                            <option value="">Category</option>
+                            <option value="astronomy">Astronomy</option>
+                            <option value="astrophysics">Astrophysics</option>
+                            <option value="cosmology">Cosmology</option>
+                            <option value="planetary">Planetary Science</option>
+                        </select>
+                        <select id="filter-status" class="p-3 border-2 border-black neubrutalism-sm bg-green-100">
+                            <option value="">Status</option>
+                            <option value="not-started">Not Started</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="review">Under Review</option>
+                            <option value="complete">Complete</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban View - Default -->
+            <div id="kanban-view" class="view-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="kanban-column bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4 bg-red-300 py-1 px-2 inline-block neubrutalism-sm">Not Started</h3>
+                        <div class="kanban-items space-y-3" data-status="not-started">
+                            <!-- Items will be loaded dynamically -->
+                        </div>
+                    </div>
+                    <div class="kanban-column bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4 bg-yellow-300 py-1 px-2 inline-block neubrutalism-sm">In Progress</h3>
+                        <div class="kanban-items space-y-3" data-status="in-progress">
+                            <!-- Items will be loaded dynamically -->
+                        </div>
+                    </div>
+                    <div class="kanban-column bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4 bg-blue-300 py-1 px-2 inline-block neubrutalism-sm">Under Review</h3>
+                        <div class="kanban-items space-y-3" data-status="review">
+                            <!-- Items will be loaded dynamically -->
+                        </div>
+                    </div>
+                    <div class="kanban-column bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4 bg-green-300 py-1 px-2 inline-block neubrutalism-sm">Complete</h3>
+                        <div class="kanban-items space-y-3" data-status="complete">
+                            <!-- Items will be loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List View -->
+            <div id="list-view" class="view-content hidden">
+                <div class="bg-white neubrutalism p-4">
+                    <table class="w-full">
+                        <thead class="border-b-2 border-black">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Title</th>
+                                <th class="px-4 py-2 text-left">Category</th>
+                                <th class="px-4 py-2 text-left">Status</th>
+                                <th class="px-4 py-2 text-left">Due Date</th>
+                                <th class="px-4 py-2 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list-items">
+                            <!-- Items will be loaded dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendar-view" class="view-content hidden">
+                <div class="bg-white neubrutalism p-4">
+                    <div class="flex justify-between mb-4">
+                        <h3 class="font-bold text-lg">April 2023</h3>
+                        <div>
+                            <button class="bg-gray-200 px-2 py-1 neubrutalism-sm mr-2">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button class="bg-gray-200 px-2 py-1 neubrutalism-sm">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-2">
+                        <div class="text-center font-bold">Sun</div>
+                        <div class="text-center font-bold">Mon</div>
+                        <div class="text-center font-bold">Tue</div>
+                        <div class="text-center font-bold">Wed</div>
+                        <div class="text-center font-bold">Thu</div>
+                        <div class="text-center font-bold">Fri</div>
+                        <div class="text-center font-bold">Sat</div>
+                        
+                        <!-- Calendar days -->
+                        <!-- Calendar will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics View -->
+            <div id="statistics-view" class="view-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4">Research Progress</h3>
+                        <div class="h-64 flex items-center justify-center">
+                            <p class="text-gray-500">Progress chart will be displayed here</p>
+                        </div>
+                    </div>
+                    <div class="bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4">Research by Category</h3>
+                        <div class="h-64 flex items-center justify-center">
+                            <p class="text-gray-500">Category distribution chart will be displayed here</p>
+                        </div>
+                    </div>
+                    <div class="bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4">Recent Activity</h3>
+                        <ul class="space-y-2">
+                            <li class="border-b border-gray-200 pb-2">Added "Exoplanet Atmosphere Analysis" - 2 days ago</li>
+                            <li class="border-b border-gray-200 pb-2">Updated "Dark Matter Distribution" - 3 days ago</li>
+                            <li class="border-b border-gray-200 pb-2">Completed "Stellar Evolution Model" - 1 week ago</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white neubrutalism p-4">
+                        <h3 class="font-bold text-lg mb-4">Upcoming Deadlines</h3>
+                        <ul class="space-y-2" id="upcoming-deadlines">
+                            <!-- Will be populated dynamically -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="bg-white neubrutalism p-4 m-4 mt-2">
+            <div class="container mx-auto text-center">
+                <p>© 2023 AstroNote - Research Management Tool for Astrophysicists</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal for new/edit research item -->
+    <div id="research-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white neubrutalism p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-xl" id="modal-title">New Research</h3>
+                <button id="close-modal" class="bg-red-300 p-2 neubrutalism-sm">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="research-form">
+                <input type="hidden" id="research-id">
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">Title</label>
+                    <input type="text" id="research-title" class="w-full p-2 border-2 border-black" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">Description</label>
+                    <textarea id="research-description" class="w-full p-2 border-2 border-black" rows="3"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block mb-2 font-semibold">Category</label>
+                        <select id="research-category" class="w-full p-2 border-2 border-black">
+                            <option value="astronomy">Astronomy</option>
+                            <option value="astrophysics">Astrophysics</option>
+                            <option value="cosmology">Cosmology</option>
+                            <option value="planetary">Planetary Science</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-2 font-semibold">Status</label>
+                        <select id="research-status" class="w-full p-2 border-2 border-black">
+                            <option value="not-started">Not Started</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="review">Under Review</option>
+                            <option value="complete">Complete</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">Due Date</label>
+                    <input type="date" id="research-due-date" class="w-full p-2 border-2 border-black">
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">Collaborators</label>
+                    <input type="text" id="research-collaborators" class="w-full p-2 border-2 border-black" placeholder="Comma separated names">
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">Tags</label>
+                    <input type="text" id="research-tags" class="w-full p-2 border-2 border-black" placeholder="Comma separated tags">
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="cancel-research" class="bg-gray-300 px-4 py-2 neubrutalism-sm">Cancel</button>
+                    <button type="submit" class="bg-blue-400 px-4 py-2 neubrutalism-sm">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Spinner Modal -->
+    <div id="loading-modal" class="fixed inset-0 bg-black bg-opacity-30 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg flex flex-col items-center">
+            <div class="loading-spinner mb-4"></div>
+            <p class="text-gray-700">Loading...</p>
+        </div>
+    </div>
+
+    <script>
+        // App Slug for MongoDB
+        const APP_SLUG = "astrophysics-research-987654";
+
+        // DOM Elements
+        const kanbanView = document.getElementById('kanban-view');
+        const listView = document.getElementById('list-view');
+        const calendarView = document.getElementById('calendar-view');
+        const statisticsView = document.getElementById('statistics-view');
+        const viewTabs = document.querySelectorAll('.view-tab');
+        const newResearchBtn = document.getElementById('new-research-btn');
+        const researchModal = document.getElementById('research-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const cancelResearchBtn = document.getElementById('cancel-research');
+        const researchForm = document.getElementById('research-form');
+        const loadingModal = document.getElementById('loading-modal');
+        const searchInput = document.getElementById('search-input');
+        const filterCategory = document.getElementById('filter-category');
+        const filterStatus = document.getElementById('filter-status');
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
+
+        // Initial data load
+        let researchItems = [];
+        
+        // Color mapping for categories
+        const categoryColors = {
+            "astronomy": "bg-blue-200",
+            "astrophysics": "bg-purple-200",
+            "cosmology": "bg-yellow-200",
+            "planetary": "bg-green-200"
+        };
+
+        // Status display names
+        const statusNames = {
+            "not-started": "Not Started",
+            "in-progress": "In Progress",
+            "review": "Under Review",
+            "complete": "Complete"
+        };
+
+        // Status colors
+        const statusColors = {
+            "not-started": "bg-red-200",
+            "in-progress": "bg-yellow-200",
+            "review": "bg-blue-200",
+            "complete": "bg-green-200"
+        };
+
+        // Functions
+        function showLoading() {
+            loadingModal.classList.remove('hidden');
+            loadingModal.classList.add('flex');
+        }
+
+        function hideLoading() {
+            loadingModal.classList.add('hidden');
+            loadingModal.classList.remove('flex');
+        }
+
+        function switchView(viewName) {
+            // Hide all views
+            kanbanView.classList.add('hidden');
+            listView.classList.add('hidden');
+            calendarView.classList.add('hidden');
+            statisticsView.classList.add('hidden');
+            
+            // Show selected view
+            document.getElementById(`${viewName}-view`).classList.remove('hidden');
+            
+            // Update active tab
+            viewTabs.forEach(tab => {
+                if (tab.dataset.view === viewName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // Update UI based on view
+            if (viewName === 'calendar') {
+                renderCalendar();
+            } else if (viewName === 'statistics') {
+                renderStatistics();
+            }
+        }
+
+        async function loadResearchItems() {
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer 3G13ElSfYeXjHYnA1xrXK9HPAl12'
+                    },
+                    body: JSON.stringify({
+                        appSlug: APP_SLUG,
+                        action: 'read',
+                        collection: 'research'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    researchItems = data.result || [];
+                    renderItems();
+                } else {
+                    console.error('Failed to load research items:', data);
+                }
+            } catch (error) {
+                console.error('Error loading research items:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderItems() {
+            renderKanbanItems();
+            renderListItems();
+            renderUpcomingDeadlines();
+        }
+
+        function filterItems() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const categoryFilter = filterCategory.value;
+            const statusFilter = filterStatus.value;
+            
+            return researchItems.filter(item => {
+                const matchesSearch = !searchTerm || 
+                    item.title.toLowerCase().includes(searchTerm) || 
+                    (item.description && item.description.toLowerCase().includes(searchTerm)) ||
+                    (item.tags && item.tags.some(tag => tag.toLowerCase().includes(searchTerm)));
+                
+                const matchesCategory = !categoryFilter || item.category === categoryFilter;
+                const matchesStatus = !statusFilter || item.status === statusFilter;
+                
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+        }
+
+        function renderKanbanItems() {
+            const filteredItems = filterItems();
+            const kanbanColumns = document.querySelectorAll('.kanban-items');
+            
+            // Clear all columns
+            kanbanColumns.forEach(column => {
+                column.innerHTML = '';
+            });
+            
+            // Group items by status
+            filteredItems.forEach(item => {
+                const column = document.querySelector(`.kanban-items[data-status="${item.status}"]`);
+                if (column) {
+                    column.appendChild(createKanbanCard(item));
+                }
+            });
+        }
+
+        function createKanbanCard(item) {
+            const card = document.createElement('div');
+            card.className = `bg-white neubrutalism-sm p-3 cursor-pointer`;
+            card.dataset.id = item._id;
+            
+            // Create category badge
+            const categoryClass = categoryColors[item.category] || 'bg-gray-200';
+            
+            // Format due date
+            let dueDateDisplay = '';
+            if (item.dueDate) {
+                const dueDate = new Date(item.dueDate);
+                dueDateDisplay = dueDate.toLocaleDateString();
+            }
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <h4 class="font-bold text-md">${item.title}</h4>
+                    <span class="text-xs ${categoryClass} px-2 py-1 rounded">${item.category}</span>
+                </div>
+                <p class="text-sm my-2 text-gray-700">${item.description || ''}</p>
+                ${dueDateDisplay ? `<div class="text-xs text-gray-600 mt-1"><i class="bi bi-calendar"></i> ${dueDateDisplay}</div>` : ''}
+                <div class="mt-2">
+                    ${item.tags ? item.tags.map(tag => `<span class="tag bg-gray-200">${tag}</span>`).join('') : ''}
+                </div>
+                <div class="flex justify-between mt-2">
+                    <button class="edit-btn bg-blue-300 px-2 py-1 neubrutalism-sm text-xs">Edit</button>
+                    <button class="delete-btn bg-red-300 px-2 py-1 neubrutalism-sm text-xs">Delete</button>
+                </div>
+            `;
+            
+            // Add event listeners
+            card.querySelector('.edit-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openEditModal(item);
+            });
+            
+            card.querySelector('.delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteResearchItem(item._id);
+            });
+            
+            card.addEventListener('click', () => openEditModal(item));
+            
+            return card;
+        }
+
+        function renderListItems() {
+            const filteredItems = filterItems();
+            const tbody = document.getElementById('list-items');
+            tbody.innerHTML = '';
+            
+            filteredItems.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 hover:bg-gray-50';
+                
+                // Format due date
+                let dueDateDisplay = '';
+                if (item.dueDate) {
+                    const dueDate = new Date(item.dueDate);
+                    dueDateDisplay = dueDate.toLocaleDateString();
+                }
+                
+                const categoryClass = categoryColors[item.category] || 'bg-gray-200';
+                const statusClass = statusColors[item.status] || 'bg-gray-200';
+                
+                row.innerHTML = `
+                    <td class="px-4 py-2">
+                        <div class="font-medium">${item.title}</div>
+                        <div class="text-xs text-gray-500">${item.tags ? item.tags.join(', ') : ''}</div>
+                    </td>
+                    <td class="px-4 py-2">
+                        <span class="inline-block ${categoryClass} px-2 py-1 rounded text-sm">${item.category}</span>
+                    </td>
+                    <td class="px-4 py-2">
+                        <span class="inline-block ${statusClass} px-2 py-1 rounded text-sm">${statusNames[item.status]}</span>
+                    </td>
+                    <td class="px-4 py-2">${dueDateDisplay}</td>
+                    <td class="px-4 py-2">
+                        <button class="edit-btn bg-blue-300 px-2 py-1 neubrutalism-sm text-sm mr-2">Edit</button>
+                        <button class="delete-btn bg-red-300 px-2 py-1 neubrutalism-sm text-sm">Delete</button>
+                    </td>
+                `;
+                
+                // Add event listeners
+                row.querySelector('.edit-btn').addEventListener('click', () => openEditModal(item));
+                row.querySelector('.delete-btn').addEventListener('click', () => deleteResearchItem(item._id));
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderCalendar() {
+            // Simple calendar rendering logic
+            const calendar = document.querySelector('#calendar-view .grid-cols-7');
+            const daysInMonth = 30; // April has 30 days
+            
+            // Clear current calendar days
+            const existingDays = calendar.querySelectorAll('.calendar-day');
+            existingDays.forEach(day => day.remove());
+            
+            // Add empty cells for the days before the 1st of the month (April 2023 starts on Saturday)
+            for (let i = 0; i < 6; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day text-center p-2 h-24 bg-gray-100 border border-gray-200';
+                calendar.appendChild(emptyDay);
+            }
+            
+            // Add calendar days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day text-center p-2 h-24 bg-white border border-gray-200 overflow-auto';
+                dayCell.innerHTML = `
+                    <div class="font-bold mb-1">${day}</div>
+                    <div class="day-events text-xs"></div>
+                `;
+                calendar.appendChild(dayCell);
+            }
+            
+            // Populate events
+            researchItems.forEach(item => {
+                if (item.dueDate) {
+                    const dueDate = new Date(item.dueDate);
+                    // Only show April 2023 items
+                    if (dueDate.getMonth() === 3 && dueDate.getFullYear() === 2023) {
+                        const day = dueDate.getDate();
+                        const dayIndex = day + 5; // Adjust for the empty cells at the beginning
+                        
+                        const dayCell = calendar.querySelectorAll('.calendar-day')[dayIndex];
+                        if (dayCell) {
+                            const eventDiv = document.createElement('div');
+                            eventDiv.className = `${statusColors[item.status]} p-1 mb-1 text-left truncate`;
+                            eventDiv.textContent = item.title;
+                            dayCell.querySelector('.day-events').appendChild(eventDiv);
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderStatistics() {
+            // Render upcoming deadlines
+            renderUpcomingDeadlines();
+            
+            // In a real app, we would render charts here
+            // For simplicity, we're just showing placeholder text
+        }
+
+        function renderUpcomingDeadlines() {
+            const upcomingDeadlinesEl = document.getElementById('upcoming-deadlines');
+            if (!upcomingDeadlinesEl) return;
+            
+            upcomingDeadlinesEl.innerHTML = '';
+            
+            // Get items with due dates, sort by nearest deadline
+            const itemsWithDueDates = researchItems
+                .filter(item => item.dueDate && item.status !== 'complete')
+                .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+            
+            // Show the next 5 upcoming deadlines
+            const upcomingItems = itemsWithDueDates.slice(0, 5);
+            
+            if (upcomingItems.length === 0) {
+                upcomingDeadlinesEl.innerHTML = '<p class="text-gray-500">No upcoming deadlines</p>';
+                return;
+            }
+            
+            upcomingItems.forEach(item => {
+                const dueDate = new Date(item.dueDate);
+                const formattedDate = dueDate.toLocaleDateString();
+                
+                const listItem = document.createElement('li');
+                listItem.className = 'border-b border-gray-200 pb-2';
+                listItem.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="font-semibold">${item.title}</span>
+                        <span class="${statusColors[item.status]} px-2 py-1 text-xs">${statusNames[item.status]}</span>
+                    </div>
+                    <div class="text-sm text-gray-600">${formattedDate}</div>
+                `;
+                upcomingDeadlinesEl.appendChild(listItem);
+            });
+        }
+
+        function openNewResearchModal() {
+            document.getElementById('modal-title').textContent = 'New Research';
+            document.getElementById('research-id').value = '';
+            document.getElementById('research-title').value = '';
+            document.getElementById('research-description').value = '';
+            document.getElementById('research-category').value = 'astrophysics';
+            document.getElementById('research-status').value = 'not-started';
+            document.getElementById('research-due-date').value = '';
+            document.getElementById('research-collaborators').value = '';
+            document.getElementById('research-tags').value = '';
+            
+            researchModal.classList.remove('hidden');
+            researchModal.classList.add('flex');
+        }
+
+        function openEditModal(item) {
+            document.getElementById('modal-title').textContent = 'Edit Research';
+            document.getElementById('research-id').value = item._id;
+            document.getElementById('research-title').value = item.title;
+            document.getElementById('research-description').value = item.description || '';
+            document.getElementById('research-category').value = item.category;
+            document.getElementById('research-status').value = item.status;
+            
+            if (item.dueDate) {
+                const dueDate = new Date(item.dueDate);
+                const formattedDate = dueDate.toISOString().split('T')[0];
+                document.getElementById('research-due-date').value = formattedDate;
+            } else {
+                document.getElementById('research-due-date').value = '';
+            }
+            
+            document.getElementById('research-collaborators').value = item.collaborators ? item.collaborators.join(', ') : '';
+            document.getElementById('research-tags').value = item.tags ? item.tags.join(', ') : '';
+            
+            researchModal.classList.remove('hidden');
+            researchModal.classList.add('flex');
+        }
+
+        function closeModal() {
+            researchModal.classList.add('hidden');
+            researchModal.classList.remove('flex');
+        }
+
+        async function saveResearchItem(e) {
+            e.preventDefault();
+            showLoading();
+            
+            const id = document.getElementById('research-id').value;
+            const isNewItem = !id;
+            
+            const title = document.getElementById('research-title').value;
+            const description = document.getElementById('research-description').value;
+            const category = document.getElementById('research-category').value;
+            const status = document.getElementById('research-status').value;
+            const dueDate = document.getElementById('research-due-date').value;
+            
+            // Parse collaborators and tags from comma-separated inputs
+            const collaborators = document.getElementById('research-collaborators').value
+                .split(',')
+                .map(item => item.trim())
+                .filter(item => item !== '');
+                
+            const tags = document.getElementById('research-tags').value
+                .split(',')
+                .map(item => item.trim())
+                .filter(item => item !== '');
+            
+            const itemData = {
+                title,
+                description,
+                category,
+                status,
+                dueDate: dueDate || null,
+                collaborators,
+                tags,
+                updatedAt: new Date().toISOString()
+            };
+            
+            // If it's a new item, add createdAt
+            if (isNewItem) {
+                itemData.createdAt = new Date().toISOString();
+            }
+            
+            try {
+                const requestData = {
+                    appSlug: APP_SLUG,
+                    collection: 'research',
+                    data: itemData
+                };
+                
+                if (isNewItem) {
+                    requestData.action = 'create';
+                } else {
+                    requestData.action = 'update';
+                    requestData.id = id;
+                }
+                
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer 3G13ElSfYeXjHYnA1xrXK9HPAl12'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Reload items
+                    await loadResearchItems();
+                    closeModal();
+                } else {
+                    console.error('Failed to save research item:', data);
+                    alert('Failed to save research item. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error saving research item:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deleteResearchItem(id) {
+            if (!confirm('Are you sure you want to delete this research item?')) {
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer 3G13ElSfYeXjHYnA1xrXK9HPAl12'
+                    },
+                    body: JSON.stringify({
+                        appSlug: APP_SLUG,
+                        action: 'delete',
+                        collection: 'research',
+                        id: id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Reload items
+                    await loadResearchItems();
+                } else {
+                    console.error('Failed to delete research item:', data);
+                    alert('Failed to delete research item. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error deleting research item:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Event Listeners
+        viewTabs.forEach(tab => {
+            tab.addEventListener('click', () => switchView(tab.dataset.view));
+        });
+
+        newResearchBtn.addEventListener('click', openNewResearchModal);
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelResearchBtn.addEventListener('click', closeModal);
+        researchForm.addEventListener('submit', saveResearchItem);
+
+        searchInput.addEventListener('input', renderItems);
+        filterCategory.addEventListener('change', renderItems);
+        filterStatus.addEventListener('change', renderItems);
+
+        toggleViewBtn.addEventListener('click', () => {
+            const currentView = document.querySelector('.view-tab.active').dataset.view;
+            const views = ['kanban', 'list', 'calendar', 'statistics'];
+            const currentIndex = views.indexOf(currentView);
+            const nextIndex = (currentIndex + 1) % views.length;
+            switchView(views[nextIndex]);
+        });
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            loadResearchItems();
+            
+            // Add some example items if there are none
+            setTimeout(() => {
+                if (researchItems.length === 0) {
+                    // Add sample data
+                    const sampleItems = [
+                        {
+                            title: "Dark Matter Distribution in Galaxy Clusters",
+                            description: "Research on the spatial distribution of dark matter in massive galaxy clusters using gravitational lensing data.",
+                            category: "astrophysics",
+                            status: "in-progress",
+                            dueDate: "2023-05-15",
+                            collaborators: ["Dr. Jane Smith", "Prof. Michael Wang"],
+                            tags: ["dark matter", "galaxy clusters", "gravitational lensing"]
+                        },
+                        {
+                            title: "Exoplanet Atmosphere Analysis",
+                            description: "Spectroscopic analysis of exoplanet atmospheres to identify potential biosignatures.",
+                            category: "planetary",
+                            status: "not-started",
+                            dueDate: "2023-06-30",
+                            collaborators: ["Dr. Sarah Johnson"],
+                            tags: ["exoplanets", "spectroscopy", "astrobiology"]
+                        },
+                        {
+                            title: "Cosmic Microwave Background Polarization",
+                            description: "Analysis of polarization patterns in the CMB to constrain inflationary models.",
+                            category: "cosmology",
+                            status: "review",
+                            dueDate: "2023-04-22",
+                            collaborators: ["Prof. Robert Chen", "Dr. Lisa Kim"],
+                            tags: ["CMB", "inflation", "early universe"]
+                        },
+                        {
+                            title: "Stellar Evolution in Metal-Poor Environments",
+                            description: "Modeling the evolution of stars in low-metallicity environments to understand early star formation.",
+                            category: "astronomy",
+                            status: "complete",
+                            dueDate: "2023-03-10",
+                            collaborators: ["Dr. Mark Davis"],
+                            tags: ["stellar evolution", "metallicity", "early universe"]
+                        }
+                    ];
+                    
+                    sampleItems.forEach(async (item) => {
+                        try {
+                            await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer 3G13ElSfYeXjHYnA1xrXK9HPAl12'
+                                },
+                                body: JSON.stringify({
+                                    appSlug: APP_SLUG,
+                                    action: 'create',
+                                    collection: 'research',
+                                    data: {
+                                        ...item,
+                                        createdAt: new Date().toISOString(),
+                                        updatedAt: new Date().toISOString()
+                                    }
+                                })
+                            });
+                        } catch (error) {
+                            console.error('Error adding sample item:', error);
+                        }
+                    });
+                    
+                    // Reload after adding samples
+                    setTimeout(() => loadResearchItems(), 2000);
+                }
+            }, 1000);
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
